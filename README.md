@@ -1,2 +1,2 @@
 # adventofcode2018
- Scripts which solve 2018's Advent of code challenges.
+Repository for the [advent of code 2018](http://adventofcode.com/2018) challenges.
