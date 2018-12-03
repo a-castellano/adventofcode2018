@@ -43,11 +43,7 @@ func processLine(line string, fabric *[1000][1000]int, overlapMap map[int]bool) 
 			}
 		}
 	}
-	if overlap {
-		overlapMap[claimID] = true
-	} else {
-		overlapMap[claimID] = false
-	}
+	overlapMap[claimID] = overlap
 }
 
 func processFile(filename string, fabric *[1000][1000]int, overlap map[int]bool) {
