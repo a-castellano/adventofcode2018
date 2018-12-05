@@ -10,69 +10,59 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
-	"time"
+	"strings"
 )
 
 type GuardAction struct {
-	dateTime time.Time
-	id       int
-	minute   int
-	second   int
-	action   string
+	dateSeconds int64
+	id          int
+	hour        int
+	minute      int
+	action      string
+	line        string
 }
 
 type GuardActions []*GuardAction
 
 func (x GuardActions) Len() int           { return len(x) }
-func (x GuardActions) Less(i, j int) bool { return x[i].dateTime.Before(x[j].dateTime) }
+func (x GuardActions) Less(i, j int) bool { return x[i].dateSeconds < x[j].dateSeconds }
 func (x GuardActions) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
 
 func processLine(line string, guardActions *[]*GuardAction) {
 
-	var guard int
-	var minute, second, guardString, action, dateString, timeSring string
-	var dateTime time.Time
+	var minute, hour, day, month, year int
+	var guardString, action string
 
 	var guardAction GuardAction
 
-	guard = -1
-
-	re := regexp.MustCompile("\\[([[:digit:]]{4}-[[:digit:]]{2}-[[:digit:]]{2}) ([[:digit:]]{2}):([[:digit:]]{2})\\] (Guard #[[:digit:]]+ )?(.+)$")
+	re := regexp.MustCompile("\\[([[:digit:]]{4})-([[:digit:]]{2})-([[:digit:]]{2}) ([[:digit:]]{2}):([[:digit:]]{2})\\] (Guard #[[:digit:]]+ )?(.+)$")
 	match := re.FindAllStringSubmatch(line, -1)
 
-	dateString = match[0][1]
-	minute = match[0][2]
-	second = match[0][3]
-	guardString = match[0][4]
-	action = match[0][5]
-
-	timeSring = fmt.Sprintf("%s %s:%s", dateString, minute, second)
-
-	fmt.Println(timeSring)
-	dateTime, _ = time.Parse("0000-00-00 00:00", timeSring)
+	year, _ = strconv.Atoi(match[0][1])
+	month, _ = strconv.Atoi(match[0][2])
+	day, _ = strconv.Atoi(match[0][3])
+	hour, _ = strconv.Atoi(match[0][4])
+	minute, _ = strconv.Atoi(match[0][5])
+	guardString = match[0][6]
+	action = match[0][7]
 
 	if guardString != "" {
-		guard, _ = strconv.Atoi(guardString[7:])
+		guardString = strings.Trim(guardString[7:], " ")
+		guardAction.id, _ = strconv.Atoi(guardString)
+	} else {
+		guardAction.id = -1
 	}
 
-	//fmt.Printf("Minute %d, Second %d\n", minute, second)
-	//fmt.Printf("Guard %d\n", guard)
-	//fmt.Printf("Action %s\n", action)
-	//fmt.Printf("date %s - %d\n", timeSring, dateTime)
-
-	guardAction.dateTime = dateTime
-	guardAction.id = guard
-	guardAction.minute, _ = strconv.Atoi(minute)
-	guardAction.second, _ = strconv.Atoi(second)
+	guardAction.dateSeconds = int64(minute*60 + hour*3600 + day*86400 + month*2678400 + year*32140800)
+	guardAction.minute = minute
+	guardAction.hour = hour
 	guardAction.action = action
+	guardAction.line = line
 
-	//fmt.Printf("%s\n", guardAction)
 	*guardActions = append(*guardActions, &guardAction)
-	//fmt.Printf("\n")
-	//fmt.Printf("%s\n", guardAction)
 }
 
-func processFile(filename string, guards map[int]int) {
+func processFile(filename string) []*GuardAction {
 
 	var guardActions []*GuardAction
 
@@ -90,29 +80,74 @@ func processFile(filename string, guards map[int]int) {
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
-	for _, guardAction := range guardActions {
-		fmt.Println(guardAction.dateTime)
-		fmt.Println(guardAction.action)
-	}
-	fmt.Println("")
+
 	sort.Sort(GuardActions(guardActions))
-	for _, guardAction := range guardActions {
-		fmt.Println(guardAction.dateTime)
-		fmt.Println(guardAction.action)
+
+	return guardActions
+}
+
+func findSleepyhead(guardActions *[]*GuardAction, guards map[int]map[int]int) int {
+	actions := len(*guardActions)
+	var i, maxId, maxMinutes int = 0, -1, -1
+	var moreMinuesAslept, maxTimesAslept int = -1, -1
+
+	var guardID = -1
+	for i < actions-1 {
+		var preAction, postAction string
+		if (*guardActions)[i].id > 0 {
+			guardID = (*guardActions)[i].id
+		}
+		i++
+		preAction = (*guardActions)[i].action
+		if preAction == "falls asleep" {
+			i++
+			postAction = (*guardActions)[i].action
+			if postAction == "wakes up" {
+				if guards[guardID] == nil {
+					guards[guardID] = map[int]int{}
+				}
+				for j := (*guardActions)[i-1].minute; j < (*guardActions)[i].minute; j++ {
+					guards[guardID][j]++
+				}
+			}
+		}
 	}
+	for guardID, _ := range guards {
+		var guardMinutes = 0
+		for _, timesAslept := range guards[guardID] {
+			guardMinutes += timesAslept
+		}
+		if guardMinutes > maxMinutes {
+			maxId = guardID
+			maxMinutes = guardMinutes
+		}
+	}
+
+	//var moreMinuesAslept, maxTimesAslept int = -1, -1
+	for minute, timesAslept := range guards[maxId] {
+		if maxTimesAslept < timesAslept {
+			maxTimesAslept = timesAslept
+			moreMinuesAslept = minute
+		}
+	}
+	return maxId * moreMinuesAslept
 }
 
 func main() {
 
-	//guardActions := make([]GuardAction)
-	guards := make(map[int]int)
+	var guardActions []*GuardAction
+	var sleepyheadID int
+	guards := make(map[int]map[int]int)
 	args := os.Args[1:]
+
 	if len(args) != 1 {
 		log.Fatal("You must supply a file to process.")
 	}
 
 	filename := args[0]
 
-	processFile(filename, guards)
-	fmt.Printf("__\n")
+	guardActions = processFile(filename)
+	sleepyheadID = findSleepyhead(&guardActions, guards)
+
+	fmt.Printf("Guard ID -> %d\n", sleepyheadID)
 }
