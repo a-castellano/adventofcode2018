@@ -41,7 +41,7 @@ func processLine(line string) (int, int) {
 	return x, y
 }
 
-func processFile(filename string, offset int, grid *[4000][4000]int) []Point {
+func processFile(filename string, offset int) []Point {
 
 	var points []Point
 	var counter = 0
@@ -60,7 +60,6 @@ func processFile(filename string, offset int, grid *[4000][4000]int) []Point {
 		p.X += offset
 		p.Y += offset
 		p.id = counter
-		grid[p.X][p.Y] = p.id
 		points = append(points, p)
 		counter++
 	}
@@ -71,68 +70,50 @@ func processFile(filename string, offset int, grid *[4000][4000]int) []Point {
 	return points
 }
 
-func getClosest(x int, y int, points *[]Point) int {
-	var minDistance = 10000000
-	var point Point
-	var closestPoint int
-	distances := make(map[int]int)
+func countRegion(points *[]Point, limit int) int {
 
-	point.X = x
-	point.Y = y
-
-	for _, RegisteredPoint := range *points {
-		var distance = manhattanDistance(point, RegisteredPoint)
-		distances[distance] += 1
-		if minDistance > distance {
-			minDistance = distance
-			closestPoint = RegisteredPoint.id
-		}
-	}
-	if distances[minDistance] > 1 {
-		closestPoint = -1
-	}
-
-	return closestPoint
-}
-
-func fillGrid(grid *[4000][4000]int, points *[]Point) {
+	var count = 0
 
 	for x := 0; x < 4000; x++ {
 		for y := 0; y < 4000; y++ {
-			var closest = getClosest(x, y, points)
-			grid[x][y] = closest
-			if closest != -1 {
-				(*points)[closest].area++
+
+			var distance = 0
+			var currentPoint Point
+
+			currentPoint.X = x
+			currentPoint.Y = y
+
+			for _, point := range *points {
+				distance += manhattanDistance(currentPoint, point)
+				if distance >= limit {
+					break
+				}
+			}
+			if distance < limit {
+				count++
 			}
 		}
 	}
+
+	return count
 
 }
 
 func main() {
 
 	var points []Point
-	var grid [4000][4000]int
 	var offset = 2000
-	var maxArea, limit = 0, 20000
 
 	args := os.Args[1:]
 
-	if len(args) != 1 {
-		log.Fatal("You must supply a file to process.")
+	if len(args) != 2 {
+		log.Fatal("You must supply a file to process and limit.")
 	}
 
 	filename := args[0]
+	limit, _ := strconv.Atoi(args[1])
 
-	points = processFile(filename, offset, &grid)
+	points = processFile(filename, offset)
 
-	fillGrid(&grid, &points)
-
-	for _, point := range points {
-		if point.area < limit && point.area > maxArea {
-			maxArea = point.area
-		}
-	}
-
-	fmt.Printf("Max area => %d\n", maxArea)
+	fmt.Printf("Size of the region => %d\n", countRegion(&points, limit))
 }
