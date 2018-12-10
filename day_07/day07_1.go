@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"sort"
 )
 
 type Step struct {
@@ -18,9 +19,38 @@ type Step struct {
 
 type Steps []*Step
 
-func (x Steps) Len() int           { return len(x) }
-func (x Steps) Less(i, j int) bool { return false } //DEFINE
-func (x Steps) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
+func (x Steps) Len() int      { return len(x) }
+func (x Steps) Swap(i, j int) { x[i], x[j] = x[j], x[i] }
+func (x Steps) Less(i, j int) bool {
+
+	var result bool
+
+	if x[i].status == "Finished" && x[j].status == "Finished" {
+		result = false
+	} else {
+		if x[i].status == x[j].status {
+			result = x[i].ID < x[j].ID
+		} else {
+			if x[j].status == "Finished" {
+				result = false
+			} else {
+				if x[i].status == "Finished" {
+					result = true
+				} else {
+					if x[j].status == "Available" {
+						result = false
+					} else {
+						if x[i].status == "Available" {
+							result = true
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return result
+}
 
 func processLine(line string) (byte, byte) {
 	var state, beforeState byte
@@ -34,7 +64,7 @@ func processLine(line string) (byte, byte) {
 	return state, beforeState
 }
 
-func processFile(filename string) ([]*Step, map[byte]*Step) {
+func processFile(filename string) []*Step {
 
 	var steps []*Step
 	stepsMap := make(map[byte]*Step)
@@ -73,13 +103,40 @@ func processFile(filename string) ([]*Step, map[byte]*Step) {
 		log.Fatal(err)
 	}
 
-	return steps, stepsMap
+	return steps
+}
+
+func order(steps []*Step) []byte {
+	var order []byte
+	var totalSteps, finishedSteps int = len(steps), 0
+	sort.Sort(Steps(steps))
+	for finishedSteps != totalSteps {
+		var finishedID byte
+		for _, step := range steps {
+			if step.status == "Available" {
+				step.status = "Finished"
+				order = append(order, step.ID)
+				finishedSteps++
+				finishedID = step.ID
+				break
+			}
+		}
+		for _, step := range steps {
+			if _, ok := step.requires[finishedID]; ok {
+				delete(step.requires, finishedID)
+				if len(step.requires) == 0 {
+					step.status = "Available"
+				}
+			}
+		}
+		sort.Sort(Steps(steps))
+	}
+	return order
 }
 
 func main() {
 
-	var stepts []*Step
-	var stepsMap map[byte]*Step
+	var steps []*Step
 
 	args := os.Args[1:]
 
@@ -89,16 +146,7 @@ func main() {
 
 	filename := args[0]
 
-	stepts, stepsMap = processFile(filename)
+	steps = processFile(filename)
 
-	fmt.Printf("%c\n", stepts[1].ID)
-	fmt.Printf("%c\n", stepsMap['C'].ID)
-	for _, step := range stepts {
-		fmt.Printf("State %c:\n", step.ID)
-		fmt.Printf("State %c is %s:\n", step.ID, step.status)
-		for requiredStep, _ := range step.requires {
-			fmt.Printf("\tRequires %c:\n", requiredStep)
-		}
-	}
-	fmt.Printf("_\n")
+	fmt.Printf("Order: %s\n", order(steps))
 }
