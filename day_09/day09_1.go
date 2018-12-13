@@ -22,49 +22,9 @@ type Marble struct {
 }
 
 type MarbleCircle struct {
-	CurrentMarble   *Marble
-	FirstMarble     *Marble
-	Size            int
-	CurrentPosition int
+	CurrentMarble *Marble
+	FirstMarble   *Marble
 }
-
-//func (circle *MarbleCircle) CalculateNextPosition(increment int) int {
-//	var position int = (circle.CurrentPosition + increment)
-//	if position < 0 {
-//		position = -position
-//	}
-//	return position % circle.Size
-//}
-//
-//func (circle *MarbleCircle) AddMarble(value int) {
-//
-//	var position1 int = circle.CalculateNextPosition(1)
-//
-//	circle.Marbles = append(circle.Marbles, Marble{Value: -1})
-//	circle.Size++
-//	var position2 int = circle.CalculateNextPosition(2)
-//
-//	copy(circle.Marbles[position2+1:], circle.Marbles[position2:circle.Size])
-//	circle.Marbles[position1+1].Value = value
-//
-//	circle.CurrentPosition = position1 + 1
-//}
-//
-//func (circle *MarbleCircle) RemoveMarble(offsetToRemove int) int {
-//
-//	var position int = circle.CalculateNextPosition(offsetToRemove)
-//	var value int = circle.Marbles[position].Value
-//
-//	newCircle := make([]Marble, circle.Size-1)
-//
-//	copy(newCircle[:position], circle.Marbles[:position])
-//	copy(newCircle[position:], circle.Marbles[position+1:])
-//	circle.Size--
-//
-//	circle.CurrentPosition = position
-//	circle.Marbles = newCircle
-//	return value
-//}
 
 func (marbles *MarbleCircle) Show() {
 	var current *Marble
@@ -93,8 +53,6 @@ func (marbles *MarbleCircle) AddMarble(value int) {
 	marbles.CurrentMarble.Next = &newMarble
 	marbles.CurrentMarble = marbles.CurrentMarble.Next
 
-	marbles.Size++
-
 }
 
 func (marbles *MarbleCircle) RemoveMarble(offsetToRemove int) int {
@@ -114,8 +72,6 @@ func (marbles *MarbleCircle) RemoveMarble(offsetToRemove int) int {
 	auxMarble.Next = nil
 	auxMarble.Previous = nil
 	auxMarble.Value = -1
-
-	marbles.Size--
 
 	return value
 }
@@ -148,7 +104,7 @@ func main() {
 
 	var numberOfPlayers, lastValue int
 	var firstMarble Marble
-	marbles := MarbleCircle{Size: 1, CurrentPosition: 0}
+	var marbles MarbleCircle
 
 	firstMarble.Value = 0
 	firstMarble.Next = &firstMarble
