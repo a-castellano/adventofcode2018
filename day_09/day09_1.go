@@ -26,7 +26,11 @@ type MarbleCircle struct {
 }
 
 func (circle *MarbleCircle) CalculateNextPosition(increment int) int {
-	return (circle.CurrentPosition + increment) % circle.Size
+	var position int = (circle.CurrentPosition + increment)
+	if position < 0 {
+		position = -position
+	}
+	return position % circle.Size
 }
 
 func (circle *MarbleCircle) AddMarble(value int) {
@@ -37,33 +41,50 @@ func (circle *MarbleCircle) AddMarble(value int) {
 	circle.Size++
 	var position2 int = circle.CalculateNextPosition(2)
 
-	fmt.Printf("Position -> %d\n", circle.CurrentPosition)
-	fmt.Printf("Position + 1 -> %d\n", position1)
-	fmt.Printf("Position + 2 -> %d\n", position2)
-	//
-	//	circle.Marbles = append(circle.Marbles, Marble{Value: -1})
-	//	circle.Size++
-	fmt.Printf("_________after append -> %s\n", circle.Marbles)
 	copy(circle.Marbles[position2+1:], circle.Marbles[position2:circle.Size])
-	fmt.Printf("aftercopyn -> %s\n", circle.Marbles)
 	circle.Marbles[position1+1].Value = value
-	fmt.Printf("ADDING -> %s\n", circle.Marbles)
-	fmt.Printf("____END -> %d\n", position2)
 
 	circle.CurrentPosition = position1 + 1
 }
 
-func play(circle MarbleCircle, players Players, lastValue int) {
+func (circle *MarbleCircle) RemoveMarble(offsetToRemove int) int {
+
+	var position int = circle.CalculateNextPosition(offsetToRemove)
+	var value int = circle.Marbles[position].Value
+
+	newCircle := make([]Marble, circle.Size-1)
+
+	copy(newCircle[:position], circle.Marbles[:position])
+	copy(newCircle[position:], circle.Marbles[position+1:])
+	circle.Size--
+
+	circle.CurrentPosition = position
+	circle.Marbles = newCircle
+	return value
+}
+
+func play(circle MarbleCircle, players Players, lastValue int) int {
 	var newValue int = 1
+	players.Current = 0
+	var highestScore = 0
 
 	for newValue <= lastValue {
-		circle.AddMarble(newValue)
+		if (newValue % 23) != 0 {
+			circle.AddMarble(newValue)
+		} else {
+			players.Points[players.Current] += newValue
+			players.Points[players.Current] += circle.RemoveMarble(-7)
+		}
 		newValue++
-		fmt.Println(circle.Marbles)
+		players.Current = (players.Current + 1) % players.NumberOfPlayers
+	}
+	for _, score := range players.Points {
+		if highestScore < score {
+			highestScore = score
+		}
 	}
 
-	fmt.Printf("___:::_current player __  %d__\n", players.Points[players.Current])
-	fmt.Printf("___:::_new value ___  %d__\n", newValue)
+	return highestScore
 }
 
 func main() {
@@ -80,12 +101,8 @@ func main() {
 	numberOfPlayers, _ = strconv.Atoi(args[0])
 	lastValue, _ = strconv.Atoi(args[1])
 
-	players := Players{Current: 1, NumberOfPlayers: numberOfPlayers}
+	players := Players{Current: 1, NumberOfPlayers: numberOfPlayers, Points: map[int]int{}}
 
-	play(circle, players, lastValue)
+	fmt.Printf("Score :%d\n", play(circle, players, lastValue))
 
-	fmt.Printf("_%d\n", numberOfPlayers)
-	fmt.Printf("_%d\n", lastValue)
-	fmt.Printf("_%d\n", circle.Marbles[0].Value)
-	fmt.Printf("_\n")
 }
