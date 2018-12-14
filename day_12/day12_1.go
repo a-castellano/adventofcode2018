@@ -18,10 +18,8 @@ type Pot struct {
 }
 
 type Pots struct {
-	FirstPot      *Pot
-	LastPot       *Pot
-	CurrentPlants int
-	TotalPlants   int
+	FirstPot *Pot
+	LastPot  *Pot
 }
 
 func processPotsFromLine(line string) Pots {
@@ -37,19 +35,12 @@ func processPotsFromLine(line string) Pots {
 
 	initialStateString = match[0][1]
 
-	fmt.Printf("initial ---> %s\n", initialStateString)
-
 	pot.PotType = initialStateString[0]
 	pot.Previous = nil
 	currentPot = &pot
 
 	pots.FirstPot = &pot
 	pot.Index = index
-
-	if pot.PotType == 35 {
-		pots.CurrentPlants++
-		pots.TotalPlants++
-	}
 
 	for _, potByte := range initialStateString[1:] {
 		index++
@@ -60,13 +51,7 @@ func processPotsFromLine(line string) Pots {
 		newPot.Previous = currentPot
 		currentPot.Next = &newPot
 
-		if newPot.PotType == 35 {
-			pots.CurrentPlants++
-			pots.TotalPlants++
-		}
-
 		currentPot = currentPot.Next
-		fmt.Printf("initial --->%d ------- %d\n", currentPot.Index, potByte)
 	}
 
 	pots.LastPot = currentPot
@@ -80,7 +65,6 @@ func addRuleFromLine(rules *map[string]byte, line string) {
 	re := regexp.MustCompile("([#.]{5}) => (#|.)$")
 	match := re.FindAllStringSubmatch(line, -1)
 	(*rules)[match[0][1]] = match[0][2][0]
-	fmt.Printf("String %s -> %d _______\n", match[0][1], match[0][2][0])
 }
 
 func processFile(filename string) (Pots, map[string]byte) {
@@ -150,7 +134,6 @@ func (pots *Pots) generation(rules *map[string]byte) {
 	last = pots.LastPot.Previous.Previous
 
 	for matchPot := first; matchPot != last; matchPot = matchPot.Next {
-		fmt.Printf("%d ->%s\n", matchPot.Index, matchPot.getString())
 
 		if newValue, _ := (*rules)[matchPot.getString()]; newValue != 0 {
 			newValues[matchPot.Index] = newValue
@@ -158,17 +141,14 @@ func (pots *Pots) generation(rules *map[string]byte) {
 			newValues[matchPot.Index] = 46
 		}
 	}
-	println(*rules)
 	for matchPot := first; matchPot != last; matchPot = matchPot.Next {
 		matchPot.PotType = newValues[matchPot.Index]
-		if matchPot.PotType == 35 {
-			pots.TotalPlants++
-		}
 	}
 
 }
 
 func main() {
+	var plants int = 0
 
 	args := os.Args[1:]
 	if len(args) != 1 {
@@ -177,27 +157,15 @@ func main() {
 
 	filename := args[0]
 	pots, rules := processFile(filename)
-	fmt.Printf("%d\n", pots.CurrentPlants)
-	fmt.Printf("%d\n", rules["..#.."])
-	fmt.Printf("_\n")
-	for pot := pots.FirstPot; pot != nil; pot = pot.Next {
-		fmt.Printf("Current --------- > %d\n", pot.PotType)
-	}
-	fmt.Printf("========================================\n")
-	fmt.Printf("========================================\n")
 	for i := 0; i < 20; i++ {
-
 		pots.generation(&rules)
 	}
 
-	fmt.Printf("========================================\n")
-	var churro int = 0
 	for pot := pots.FirstPot; pot != nil; pot = pot.Next {
-		fmt.Printf("Current --------- > %d %d\n", pot.Index, pot.PotType)
 		if pot.PotType == 35 {
-			churro += pot.Index
+			plants += pot.Index
 		}
 	}
-	fmt.Printf("Total Plants: %d\n", churro)
+	fmt.Printf("Total Plants: %d\n", plants)
 
 }
