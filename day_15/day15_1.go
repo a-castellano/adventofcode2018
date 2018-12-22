@@ -55,8 +55,8 @@ var RuneKinds = map[rune]int{
 // KindCosts map tile kinds to movement costs.
 var KindCosts = map[int]float64{
 	KindPlain: 1.0,
-	KindFrom:  1.0,
-	KindTo:    1.0,
+	//KindFrom:  1.0,
+	//KindTo:    1.0,
 }
 
 // A Tile is a tile in a grid which implements Pather.
@@ -80,7 +80,7 @@ func (t *Tile) PathNeighbors() []astar.Pather {
 		{1, 0},
 	} {
 		if n := t.W.Tile(t.Point.X+offset[0], t.Point.Y+offset[1]); n != nil &&
-			n.Kind == KindPlain { //Try checking only if KindPlain
+			n.Kind != KindWall && n.Kind != KindElf && n.Kind != KindGoblin { //Try checking only if KindPlain
 			neighbors = append(neighbors, n)
 		}
 	}
@@ -98,7 +98,7 @@ func (t *Tile) PathNeighborCost(to astar.Pather) float64 {
 func (t *Tile) PathEstimatedCost(to astar.Pather) float64 {
 	toT := to.(*Tile)
 	if toT == nil {
-		return float64(1000000)
+		return float64(0)
 	}
 	absX := toT.Point.X - t.Point.X
 	if absX < 0 {
@@ -243,9 +243,30 @@ func (x Points) Less(i, j int) bool {
 
 type Weakers []Player
 
-func (x Weakers) Len() int           { return len(x) }
-func (x Weakers) Swap(i, j int)      { x[i], x[j] = x[j], x[i] }
-func (x Weakers) Less(i, j int) bool { return x[i].HP < x[j].HP } // ->>> two players can have teh same HP!!!
+func (x Weakers) Len() int      { return len(x) }
+func (x Weakers) Swap(i, j int) { x[i], x[j] = x[j], x[i] }
+func (x Weakers) Less(i, j int) bool {
+	var result bool
+	if x[i].HP == x[j].HP {
+		if x[i].Point.X < x[j].Point.X {
+			result = true
+		} else {
+			if x[i].Point.X > x[j].Point.X {
+				result = false
+			} else {
+				if x[i].Point.Y < x[j].Point.Y {
+					result = true
+				} else {
+					result = false
+				}
+			}
+		}
+
+	} else {
+		result = x[i].HP < x[j].HP
+	}
+	return result
+}
 
 type Game struct {
 	Map          [][]rune
@@ -400,6 +421,7 @@ func (game *Game) findTargetsAdjacentPoints(player Player) []Point {
 		}
 	}
 
+	sort.Sort(Points(points))
 	return points
 }
 
@@ -408,10 +430,12 @@ func (game *Game) play() int {
 	var rounds int
 
 	for game.EndGame == false {
-		//for i := 1; i <= 48; i++ {
-		fmt.Printf("ROUND %d\n\n", rounds)
-		for _, line := range game.Map {
-			fmt.Println(string(line))
+		//for rounds < 4 {
+		for i := 1; i <= 1; i++ {
+			//fmt.Printf("ROUND %d\n\n", rounds)
+			//for _, line := range game.Map {
+			//	fmt.Println(string(line))
+			//}
 		}
 
 		// For each player find its targets
@@ -430,11 +454,17 @@ func (game *Game) play() int {
 					nearPoints := make(map[int][]Point)
 					var minDistance = 100000000000000
 					var foundNearPoint bool
+					//fmt.Println(game.findTargetsAdjacentPoints(player))
 					for _, point := range game.findTargetsAdjacentPoints(player) {
 						path, distance, found := astar.Path(game.World.Tile(player.Point.X, player.Point.Y), game.World.Tile(point.X, point.Y))
 						if found {
 							foundNearPoint = true
-							//fmt.Printf("Distance to target %d,%d: %f\n", point.X, point.Y, distance)
+							fmt.Printf("Distance to target %d,%d: %f\n", point.X, point.Y, distance)
+							for _, step := range path {
+								pT := step.(*Tile)
+								fmt.Println(pT.Point)
+							}
+
 							var intDistance int = int(distance)
 							if intDistance <= minDistance {
 								nearPoints[intDistance] = append(nearPoints[intDistance], Point{X: path[len(path)-2].(*Tile).Point.X, Y: path[len(path)-2].(*Tile).Point.Y})
@@ -443,19 +473,21 @@ func (game *Game) play() int {
 						}
 					}
 					if foundNearPoint {
-						//fmt.Println(nearPoints[minDistance])
+						fmt.Println("________________________________________________")
+						fmt.Println(nearPoints[minDistance])
+						fmt.Println("________________________________________________")
 						sort.Sort(Points(nearPoints[minDistance]))
-						//fmt.Printf("\t\tNearest point: \n")
-						//fmt.Println(nearPoints[minDistance][0])
+						fmt.Println("________________________________________________")
+						fmt.Printf("\t\tNearest point: \n")
+						fmt.Println(nearPoints[minDistance][0])
 						game.Map[player.Point.X][player.Point.Y] = 46
 						game.Players[playerID].Point.X = nearPoints[minDistance][0].X
 						game.Players[playerID].Point.Y = nearPoints[minDistance][0].Y
 						player.Point.X = nearPoints[minDistance][0].X
 						player.Point.Y = nearPoints[minDistance][0].Y
 						game.Map[player.Point.X][player.Point.Y] = player.Type
-						// After any change regenerate board
+						//After any change regenerate board
 						game.ParseWorld()
-						//var newPoint Point = sort.Sort(Points(nearPoints[minDistance]))[0]
 						nearTargets = game.getBesideTarget(player)
 						if len(nearTargets) > 0 {
 							attack = true
@@ -496,7 +528,7 @@ func (game *Game) play() int {
 						}
 						//fmt.Println("DEAD PLAYER")
 					}
-					//fmt.Println(game.Players[targetPlayerID].HP)
+					fmt.Println(game.Players[targetPlayerID].HP)
 					//fmt.Println("_____________ATTACK END_________________")
 				}
 			}
@@ -508,12 +540,17 @@ func (game *Game) play() int {
 		}
 
 		sort.Sort(Players(game.Players))
-		for _, player := range game.Players {
-			fmt.Println(player)
-		}
+		//for _, player := range game.Players {
+		//	fmt.Println(player)
+		//}
 		if game.EndGame == true {
 			break
 		}
+
+		for _, line := range game.Map {
+			fmt.Println(string(line))
+		}
+
 		rounds++
 	}
 	fmt.Printf("\n\nRounds: %d\n", rounds)
