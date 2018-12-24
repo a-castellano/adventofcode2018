@@ -426,38 +426,22 @@ func (game *Game) findTargetsAdjacentPoints(player Player) []Point {
 }
 
 func (game *Game) play() int {
-	fmt.Println("PLAY")
 	var rounds int
 
-	//for rounds < 4 {
 	for game.EndGame == false {
-		//for rounds < 4 {
-		for i := 1; i <= 1; i++ {
-			//fmt.Printf("ROUND %d\n\n", rounds)
-			//for _, line := range game.Map {
-			//	fmt.Println(string(line))
-			//}
-		}
-
 		// For each player find its targets
 		for playerID, player := range game.Players {
-			//var move bool
 			var attack bool
 			if player.HP > 0 {
 				nearTargets := game.getBesideTarget(player)
 				if len(nearTargets) > 0 {
 					attack = true
-					//fmt.Printf("Player in %d,%d Attacks\n", player.Point.X, player.Point.Y)
 				}
 				if attack == false {
-					fmt.Printf("Player in %d,%d: type %c\n", player.Point.X, player.Point.Y, game.Map[player.Point.X][player.Point.Y])
-					//fmt.Println(game.findTargetsAdjacentPoints(player))
 					nearPoints := make(map[int][]Point)
 					var minDistance = 100000000000000
 					var foundNearPoint bool
-					//fmt.Println(game.findTargetsAdjacentPoints(player))
 					for _, point := range game.findTargetsAdjacentPoints(player) {
-						/////
 						for _, offset := range [][]int{
 							{-1, 0},
 							{0, -1},
@@ -466,73 +450,43 @@ func (game *Game) play() int {
 						} {
 							newPoint := Point{X: player.Point.X + offset[0], Y: player.Point.Y + offset[1]}
 							if game.Map[newPoint.X][newPoint.Y] == '.' {
-								fmt.Println("_____NEW POINT_______")
-								fmt.Println(newPoint)
-								fmt.Println("________________---")
 								path, distance, found := astar.Path(game.World.Tile(newPoint.X, newPoint.Y), game.World.Tile(point.X, point.Y))
 								if found {
 									foundNearPoint = true
-									fmt.Printf("Distance to target %d,%d -> %c: %f\n", point.X, point.Y, game.Map[point.X][point.Y], distance)
-									for _, step := range path {
-										pT := step.(*Tile)
-										fmt.Println(pT.Point)
-									}
-
 									var intDistance int = int(distance)
 									if intDistance <= minDistance {
 										nearPoints[intDistance] = append(nearPoints[intDistance], Point{X: path[len(path)-1].(*Tile).Point.X, Y: path[len(path)-1].(*Tile).Point.Y})
 										minDistance = intDistance
 									}
 								}
-
 							}
 						}
 
 					}
 					if foundNearPoint {
-						fmt.Println("________________________________________________")
-						fmt.Println(nearPoints[minDistance])
-						fmt.Println("________________________________________________")
 						sort.Sort(Points(nearPoints[minDistance]))
-						fmt.Println(nearPoints[minDistance])
-						fmt.Println("________________________________________________")
-						fmt.Printf("\t\tNearest point: \n")
-						fmt.Println(nearPoints[minDistance][0])
 						game.Map[player.Point.X][player.Point.Y] = 46
 						game.Players[playerID].Point.X = nearPoints[minDistance][0].X
 						game.Players[playerID].Point.Y = nearPoints[minDistance][0].Y
 						player.Point.X = nearPoints[minDistance][0].X
 						player.Point.Y = nearPoints[minDistance][0].Y
 						game.Map[player.Point.X][player.Point.Y] = player.Type
-						//After any change regenerate board
 						game.ParseWorld()
 						nearTargets = game.getBesideTarget(player)
 						if len(nearTargets) > 0 {
 							attack = true
-							//fmt.Printf("After moving Player in %d,%d Attacks\n", player.Point.X, player.Point.Y)
 						}
 					}
 				}
 				if attack == true { //Attack
-					//fmt.Println("_____________ATTACK INCOMING_________________")
-					//fmt.Printf("I'm %s\n", string(player.Type))
-					//fmt.Println(nearTargets)
 					var target = nearTargets[0]
-					/*
-
-						Otherwise, the adjacent target with the fewest hit points is selected; in a tie, the adjacent target with the fewest hit points which is first in reading order is selected.
-					*/
-					//fmt.Printf("Target POINT: %d,%d\n", target.Point.X, target.Point.Y)
 					var targetPlayerID int
 					for targetPlayerIDCandidate, targetPlayerCandidate := range game.Players {
 						if targetPlayerCandidate.Point.X == target.Point.X && targetPlayerCandidate.Point.Y == target.Point.Y {
 							targetPlayerID = targetPlayerIDCandidate
-							//fmt.Printf("%d,%d is going to be attacked, current HP: %d\n", targetPlayerCandidate.Point.X, targetPlayerCandidate.Point.Y, game.Players[targetPlayerID].HP)
 							break
 						}
 					}
-					//fmt.Println(target)
-					//fmt.Println(targetPlayerID)
 					game.Players[targetPlayerID].HP -= 3
 					if game.Players[targetPlayerID].HP <= 0 {
 						game.Map[game.Players[targetPlayerID].Point.X][game.Players[targetPlayerID].Point.Y] = 46 //.
@@ -544,16 +498,11 @@ func (game *Game) play() int {
 						} else {
 							game.GoblinsAlive--
 						}
-						//fmt.Println("DEAD PLAYER")
 					}
-					fmt.Println(game.Players[targetPlayerID].HP)
-					//fmt.Println("_____________ATTACK END_________________")
 				}
 			}
 			if game.ElvesAlive == 0 || game.GoblinsAlive == 0 {
 				game.EndGame = true
-				fmt.Println("_____________END GAME_________________")
-				fmt.Printf("LAst player playing -> %d", playerID)
 				if playerID == len(game.Players)-1 {
 					rounds++
 				}
@@ -562,15 +511,8 @@ func (game *Game) play() int {
 		}
 
 		sort.Sort(Players(game.Players))
-		//for _, player := range game.Players {
-		//	fmt.Println(player)
-		//}
 		if game.EndGame == true {
 			break
-		}
-
-		for _, line := range game.Map {
-			fmt.Println(string(line))
 		}
 
 		rounds++
@@ -595,24 +537,6 @@ func main() {
 	game := generateGame(filename)
 	fmt.Printf("Elves Alive: %d\n", game.ElvesAlive)
 	fmt.Printf("Goblins Alive: %d\n", game.GoblinsAlive)
-	fmt.Println(string(game.Map[0]))
 	outcome := game.play()
-	fmt.Println(game.EndGame)
 	fmt.Printf("Outcome: %d\n", outcome)
-	//	path, distance, found := astar.Path(p1, p2)
-	//	if !found {
-	//		log.Println("Could not find path")
-	//	}
-	//	fmt.Println(world.RenderPath(path))
-	//	for _, step := range path {
-	//		pT := step.(*Tile)
-	//		fmt.Println(pT.Point)
-	//	}
-	//	fmt.Println(distance)
-	//
-	//	_, _, found = astar.Path(p1, p3)
-	//	if !found {
-	//		log.Println("Could not find path")
-	//	}
-	//
 }
