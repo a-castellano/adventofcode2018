@@ -429,6 +429,7 @@ func (game *Game) play() int {
 	fmt.Println("PLAY")
 	var rounds int
 
+	//for rounds < 4 {
 	for game.EndGame == false {
 		//for rounds < 4 {
 		for i := 1; i <= 1; i++ {
@@ -449,34 +450,51 @@ func (game *Game) play() int {
 					//fmt.Printf("Player in %d,%d Attacks\n", player.Point.X, player.Point.Y)
 				}
 				if attack == false {
-					//fmt.Printf("Player in %d,%d:\n\t", player.Point.X, player.Point.Y)
+					fmt.Printf("Player in %d,%d: type %c\n", player.Point.X, player.Point.Y, game.Map[player.Point.X][player.Point.Y])
 					//fmt.Println(game.findTargetsAdjacentPoints(player))
 					nearPoints := make(map[int][]Point)
 					var minDistance = 100000000000000
 					var foundNearPoint bool
 					//fmt.Println(game.findTargetsAdjacentPoints(player))
 					for _, point := range game.findTargetsAdjacentPoints(player) {
-						path, distance, found := astar.Path(game.World.Tile(player.Point.X, player.Point.Y), game.World.Tile(point.X, point.Y))
-						if found {
-							foundNearPoint = true
-							fmt.Printf("Distance to target %d,%d: %f\n", point.X, point.Y, distance)
-							for _, step := range path {
-								pT := step.(*Tile)
-								fmt.Println(pT.Point)
-							}
+						/////
+						for _, offset := range [][]int{
+							{-1, 0},
+							{0, -1},
+							{0, 1},
+							{1, 0},
+						} {
+							newPoint := Point{X: player.Point.X + offset[0], Y: player.Point.Y + offset[1]}
+							if game.Map[newPoint.X][newPoint.Y] == '.' {
+								fmt.Println("_____NEW POINT_______")
+								fmt.Println(newPoint)
+								fmt.Println("________________---")
+								path, distance, found := astar.Path(game.World.Tile(newPoint.X, newPoint.Y), game.World.Tile(point.X, point.Y))
+								if found {
+									foundNearPoint = true
+									fmt.Printf("Distance to target %d,%d -> %c: %f\n", point.X, point.Y, game.Map[point.X][point.Y], distance)
+									for _, step := range path {
+										pT := step.(*Tile)
+										fmt.Println(pT.Point)
+									}
 
-							var intDistance int = int(distance)
-							if intDistance <= minDistance {
-								nearPoints[intDistance] = append(nearPoints[intDistance], Point{X: path[len(path)-2].(*Tile).Point.X, Y: path[len(path)-2].(*Tile).Point.Y})
-								minDistance = intDistance
+									var intDistance int = int(distance)
+									if intDistance <= minDistance {
+										nearPoints[intDistance] = append(nearPoints[intDistance], Point{X: path[len(path)-1].(*Tile).Point.X, Y: path[len(path)-1].(*Tile).Point.Y})
+										minDistance = intDistance
+									}
+								}
+
 							}
 						}
+
 					}
 					if foundNearPoint {
 						fmt.Println("________________________________________________")
 						fmt.Println(nearPoints[minDistance])
 						fmt.Println("________________________________________________")
 						sort.Sort(Points(nearPoints[minDistance]))
+						fmt.Println(nearPoints[minDistance])
 						fmt.Println("________________________________________________")
 						fmt.Printf("\t\tNearest point: \n")
 						fmt.Println(nearPoints[minDistance][0])
@@ -535,6 +553,10 @@ func (game *Game) play() int {
 			if game.ElvesAlive == 0 || game.GoblinsAlive == 0 {
 				game.EndGame = true
 				fmt.Println("_____________END GAME_________________")
+				fmt.Printf("LAst player playing -> %d", playerID)
+				if playerID == len(game.Players)-1 {
+					rounds++
+				}
 				break
 			}
 		}
