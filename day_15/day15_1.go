@@ -189,6 +189,12 @@ type Point struct {
 	Y int
 }
 
+type TargetNearPoint struct {
+	X           int
+	Y           int
+	TargetPoint Point
+}
+
 type Player struct {
 	Point Point
 	Type  rune
@@ -223,6 +229,29 @@ type Points []Point
 func (x Points) Len() int      { return len(x) }
 func (x Points) Swap(i, j int) { x[i], x[j] = x[j], x[i] }
 func (x Points) Less(i, j int) bool {
+	var result bool
+
+	if x[i].X < x[j].X {
+		result = true
+	} else {
+		if x[i].X > x[j].X {
+			result = false
+		} else {
+			if x[i].Y < x[j].Y {
+				result = true
+			} else {
+				result = false
+			}
+		}
+	}
+	return result
+}
+
+type TargetNearPoints []TargetNearPoint
+
+func (x TargetNearPoints) Len() int      { return len(x) }
+func (x TargetNearPoints) Swap(i, j int) { x[i], x[j] = x[j], x[i] }
+func (x TargetNearPoints) Less(i, j int) bool {
 	var result bool
 
 	if x[i].X < x[j].X {
@@ -411,17 +440,19 @@ func (game *Game) getBesideTarget(player Player) []Player {
 	return targets
 }
 
-func (game *Game) findTargetsAdjacentPoints(player Player) []Point {
+func (game *Game) findTargetsAdjacentPoints(player Player) []TargetNearPoint {
 
-	var points []Point
+	var points []TargetNearPoint
 
 	for _, target := range game.Players {
 		if target.Type != player.Type && target.HP > 0 {
-			points = append(points, game.getAdjacent(target.Point)...)
+			for _, point := range game.getAdjacent(target.Point) {
+				points = append(points, TargetNearPoint{X: point.X, Y: point.Y, TargetPoint: target.Point})
+			}
 		}
 	}
 
-	sort.Sort(Points(points))
+	sort.Sort(TargetNearPoints(points))
 	return points
 }
 
@@ -433,6 +464,10 @@ func (game *Game) play() int {
 		for playerID, player := range game.Players {
 			var attack bool
 			if player.HP > 0 {
+				for _, line := range game.Map {
+					fmt.Println(line)
+				}
+				fmt.Printf("\n")
 				nearTargets := game.getBesideTarget(player)
 				if len(nearTargets) > 0 {
 					attack = true
