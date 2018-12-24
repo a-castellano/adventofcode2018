@@ -270,6 +270,46 @@ func (x TargetNearPoints) Less(i, j int) bool {
 	return result
 }
 
+type SameDistanceNearPoints []TargetNearPoint
+
+func (x SameDistanceNearPoints) Len() int      { return len(x) }
+func (x SameDistanceNearPoints) Swap(i, j int) { x[i], x[j] = x[j], x[i] }
+func (x SameDistanceNearPoints) Less(i, j int) bool {
+	var result bool
+
+	if x[i].TargetPoint.X < x[j].TargetPoint.X {
+		result = true
+	} else {
+		if x[i].TargetPoint.X > x[j].TargetPoint.X {
+			result = false
+		} else {
+			if x[i].TargetPoint.Y < x[j].TargetPoint.Y {
+				result = true
+			} else {
+				if x[i].TargetPoint.Y > x[j].TargetPoint.Y {
+					result = false
+				} else { //Same Point
+					if x[i].X < x[j].X {
+						result = true
+					} else {
+						if x[i].X > x[j].X {
+							result = false
+						} else {
+							if x[i].Y < x[j].Y {
+								result = true
+							} else {
+								result = false
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return result
+}
+
 type Weakers []Player
 
 func (x Weakers) Len() int      { return len(x) }
@@ -464,16 +504,12 @@ func (game *Game) play() int {
 		for playerID, player := range game.Players {
 			var attack bool
 			if player.HP > 0 {
-				for _, line := range game.Map {
-					fmt.Println(line)
-				}
-				fmt.Printf("\n")
 				nearTargets := game.getBesideTarget(player)
 				if len(nearTargets) > 0 {
 					attack = true
 				}
 				if attack == false {
-					nearPoints := make(map[int][]Point)
+					nearPoints := make(map[int][]TargetNearPoint)
 					var minDistance = 100000000000000
 					var foundNearPoint bool
 					for _, point := range game.findTargetsAdjacentPoints(player) {
@@ -490,7 +526,7 @@ func (game *Game) play() int {
 									foundNearPoint = true
 									var intDistance int = int(distance)
 									if intDistance <= minDistance {
-										nearPoints[intDistance] = append(nearPoints[intDistance], Point{X: path[len(path)-1].(*Tile).Point.X, Y: path[len(path)-1].(*Tile).Point.Y})
+										nearPoints[intDistance] = append(nearPoints[intDistance], TargetNearPoint{X: path[len(path)-1].(*Tile).Point.X, Y: path[len(path)-1].(*Tile).Point.Y, TargetPoint: point.TargetPoint})
 										minDistance = intDistance
 									}
 								}
@@ -499,7 +535,7 @@ func (game *Game) play() int {
 
 					}
 					if foundNearPoint {
-						sort.Sort(Points(nearPoints[minDistance]))
+						sort.Sort(SameDistanceNearPoints(nearPoints[minDistance]))
 						game.Map[player.Point.X][player.Point.Y] = 46
 						game.Players[playerID].Point.X = nearPoints[minDistance][0].X
 						game.Players[playerID].Point.Y = nearPoints[minDistance][0].Y
