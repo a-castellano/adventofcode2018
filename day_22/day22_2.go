@@ -4,7 +4,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/a-castellano/dijkstra"
+	"github.com/yourbasic/graph"
 	"log"
 	"os"
 	"strconv"
@@ -71,7 +71,8 @@ func fillCave(cave *[][]rune, depth int, height int, width int) {
 }
 
 func calculatePath(cave *[][]rune, height int, width int, targetX int, targetY int) {
-	graph := dijkstra.NewGraph()
+
+	caveGraph := graph.New((height-1)*height*width + (width-1)*width + 3)
 	//Add nodes and transitions inside the same node
 	for x := 0; x < height; x++ {
 		for y := 0; y < width; y++ {
@@ -91,10 +92,8 @@ func calculatePath(cave *[][]rune, height int, width int, targetX int, targetY i
 				id1 = x*height*width + y*width + objectValue["neither"]
 				id2 = x*height*width + y*width + objectValue["torch"]
 			}
-			graph.AddVertex(id1)
-			graph.AddVertex(id2)
-			graph.AddArc(id1, id2, 7)
-			graph.AddArc(id2, id1, 7)
+			caveGraph.AddBothCost(id1, id2, 7)
+			caveGraph.AddBothCost(id2, id1, 7)
 		}
 	}
 
@@ -109,15 +108,9 @@ func calculatePath(cave *[][]rune, height int, width int, targetX int, targetY i
 			if x > 0 {
 				candidateIDs[(x-1)*height*width+y*width] = (*cave)[x-1][y]
 			}
-			//			if x < height-1 {
-			//				candidateIDs[(x+1)*height*width+y*width] = (*cave)[x+1][y]
-			//			}
 			if y > 0 {
 				candidateIDs[x*height*width+(y-1)*width] = (*cave)[x][y-1]
 			}
-			//			if y < width-1 {
-			//				candidateIDs[x*height*width+(y+1)*width] = (*cave)[x][y+1]
-			//			}
 
 			for candidateID, candidateValue := range candidateIDs {
 				var id1, id2, id3, id4 int
@@ -129,90 +122,72 @@ func calculatePath(cave *[][]rune, height int, width int, targetX int, targetY i
 						id2 = candidateID + objectValue["climbing gear"]
 						id3 = caveID + objectValue["torch"]
 						id4 = candidateID + objectValue["torch"]
-						graph.AddArc(id1, id2, 1)
-						graph.AddArc(id2, id1, 1)
-						graph.AddArc(id3, id4, 1)
-						graph.AddArc(id4, id3, 1)
+						caveGraph.AddBothCost(id1, id2, 1)
+						caveGraph.AddBothCost(id2, id1, 1)
+						caveGraph.AddBothCost(id3, id4, 1)
+						caveGraph.AddBothCost(id4, id3, 1)
 					case wet:
 						id1 = caveID + objectValue["climbing gear"]
 						id2 = candidateID + objectValue["climbing gear"]
-						graph.AddArc(id1, id2, 1)
-						graph.AddArc(id2, id1, 1)
+						caveGraph.AddBothCost(id1, id2, 1)
+						caveGraph.AddBothCost(id2, id1, 1)
 					case narrow:
 						id1 = caveID + objectValue["torch"]
 						id2 = candidateID + objectValue["torch"]
-						graph.AddArc(id1, id2, 1)
-						graph.AddArc(id2, id1, 1)
+						caveGraph.AddBothCost(id1, id2, 1)
+						caveGraph.AddBothCost(id2, id1, 1)
 					}
 				case wet:
 					switch caveSymbolValue[candidateValue] {
 					case rocky:
 						id1 = caveID + objectValue["climbing gear"]
 						id2 = candidateID + objectValue["climbing gear"]
-						graph.AddArc(id1, id2, 1)
-						graph.AddArc(id2, id1, 1)
+						caveGraph.AddBothCost(id1, id2, 1)
+						caveGraph.AddBothCost(id2, id1, 1)
 					case wet:
 						id1 = caveID + objectValue["climbing gear"]
 						id2 = candidateID + objectValue["climbing gear"]
 						id3 = caveID + objectValue["neither"]
 						id4 = candidateID + objectValue["neither"]
-						graph.AddArc(id1, id2, 1)
-						graph.AddArc(id2, id1, 1)
-						graph.AddArc(id3, id4, 1)
-						graph.AddArc(id4, id3, 1)
+						caveGraph.AddBothCost(id1, id2, 1)
+						caveGraph.AddBothCost(id2, id1, 1)
+						caveGraph.AddBothCost(id3, id4, 1)
+						caveGraph.AddBothCost(id4, id3, 1)
 					case narrow:
 						id1 = caveID + objectValue["neither"]
 						id2 = candidateID + objectValue["neither"]
-						graph.AddArc(id1, id2, 1)
-						graph.AddArc(id2, id1, 1)
+						caveGraph.AddBothCost(id1, id2, 1)
+						caveGraph.AddBothCost(id2, id1, 1)
 					}
 				case narrow:
 					switch caveSymbolValue[candidateValue] {
 					case rocky:
 						id1 = caveID + objectValue["torch"]
 						id2 = candidateID + objectValue["torch"]
-						graph.AddArc(id1, id2, 1)
-						graph.AddArc(id2, id1, 1)
+						caveGraph.AddBothCost(id1, id2, 1)
+						caveGraph.AddBothCost(id2, id1, 1)
 					case wet:
 						id1 = caveID + objectValue["neither"]
 						id2 = candidateID + objectValue["neither"]
-						graph.AddArc(id1, id2, 1)
-						graph.AddArc(id2, id1, 1)
+						caveGraph.AddBothCost(id1, id2, 1)
+						caveGraph.AddBothCost(id2, id1, 1)
 					case narrow:
 						id1 = caveID + objectValue["torch"]
 						id2 = candidateID + objectValue["torch"]
 						id3 = caveID + objectValue["neither"]
 						id4 = candidateID + objectValue["neither"]
-						graph.AddArc(id1, id2, 1)
-						graph.AddArc(id2, id1, 1)
-						graph.AddArc(id3, id4, 1)
-						graph.AddArc(id4, id3, 1)
+						caveGraph.AddBothCost(id1, id2, 1)
+						caveGraph.AddBothCost(id2, id1, 1)
+						caveGraph.AddBothCost(id3, id4, 1)
+						caveGraph.AddBothCost(id4, id3, 1)
 					}
 				}
 			}
 
-			//			var nodeId int = x*height + y
-			//			nodeSymbol := (*cave)[x][y]
-			//			graph.AddArc(nodeSymbol, nodeSymbol, 7)
-			//			switch nodeSymbol {
-			//			case caveSymbol[rocky]:
-			//			case caveSymbol[wet]:
-			//			case caveSymbol[narrow]:
-			//			}
 		}
 	}
-	best, err := graph.Shortest(0+objectValue["torch"], targetX*height*width+targetY*width+objectValue["torch"], int64(1000))
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("Shotest time inverted ", best.Distance)
-
-	//
-	//	//Add arcs
-	//	graph.AddArc(0, 1, 1)
-	//	graph.AddArc(0, 2, 1)
-	//	graph.AddArc(1, 0, 1)
-	//	graph.AddArc(1, 2, 2)
+	_, dist := graph.ShortestPath(caveGraph, 0+objectValue["torch"], targetX*height*width+targetY*width+objectValue["torch"])
+	fmt.Println("Shotest time inverted ", dist)
 }
 
 func main() {
@@ -246,11 +221,4 @@ func main() {
 
 	calculatePath(&cave, caveDimension, caveDimension, targetX, targetY)
 
-	//	for i := 0; i <= targetX; i++ {
-	//		for j := 0; j <= targetY; j++ {
-	//			totalRisk += caveSymbolValue[cave[i][j]]
-	//		}
-	//	}
-	//
-	//	fmt.Printf("Total Risk: %d\n", totalRisk)
 }
