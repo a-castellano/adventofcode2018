@@ -233,8 +233,11 @@ func fight(systems Systems) int {
 		var idToAttack int = -1
 		for targetID, target := range systems[systemToAttack] {
 			if _, ok := (*attackChoosen)[targetID]; !ok {
+				fmt.Println("CHOOSE ? ", target)
 				damage := attakerGroup.calculateDamageover(target)
+				fmt.Println("Damage: ", damage)
 				if damage > maxDamage {
+					fmt.Println("CHOOED BY DAMAGE")
 					maxDamage = damage
 					maxEffectivePower = target.EffectivePower
 					maxInitiative = target.Initiative
@@ -242,16 +245,21 @@ func fight(systems Systems) int {
 				} else {
 					if damage == maxDamage {
 						if target.EffectivePower > maxEffectivePower {
+							fmt.Println("EffectivePower")
 							maxDamage = damage
 							maxEffectivePower = target.EffectivePower
 							maxInitiative = target.Initiative
 							idToAttack = targetID
 						} else {
-							if target.Initiative > maxInitiative {
-								maxDamage = damage
-								maxEffectivePower = target.EffectivePower
-								maxInitiative = target.Initiative
-								idToAttack = targetID
+							if target.EffectivePower == maxEffectivePower {
+								if target.Initiative > maxInitiative {
+
+									fmt.Println("CHOOED BY Initiative")
+									maxDamage = damage
+									maxEffectivePower = target.EffectivePower
+									maxInitiative = target.Initiative
+									idToAttack = targetID
+								}
 							}
 						}
 					}
@@ -261,6 +269,9 @@ func fight(systems Systems) int {
 		if idToAttack > -1 {
 			(*attackChoosal)[attackerID] = idToAttack
 			(*attackChoosen)[idToAttack] = attackerID
+			fmt.Println()
+			fmt.Println(attackChoosal)
+			fmt.Println(attackChoosen)
 			fmt.Println()
 			fmt.Println("attacker")
 			fmt.Println(systems[attacker.SystemType][attacker.GroupID])
@@ -276,7 +287,8 @@ func fight(systems Systems) int {
 	fmt.Println(initiativeGroups)
 	fmt.Println()
 	fmt.Println()
-	//Time to attack
+
+	//2 - Attack
 
 	for _, initiativeGroup := range initiativeGroups {
 		var attackerPtr, targetPtr *Group
