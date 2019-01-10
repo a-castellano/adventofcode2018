@@ -26,10 +26,6 @@ type Group struct {
 }
 
 func (attacker Group) calculateDamageover(target Group) int {
-	//fmt.Println("calculateDamageover")
-	//fmt.Println(attacker)
-	//fmt.Println(target)
-	//fmt.Println("_________________")
 	var multiplier int = 1
 	if _, ok := target.Weaknesses[attacker.DamageType]; ok {
 		multiplier = 2
@@ -195,132 +191,139 @@ func getAttackGroups(systems Systems) TargetGroups {
 		}
 	}
 	sort.Sort(sort.Reverse(targetGroups))
-	fmt.Println(targetGroups)
 
 	return targetGroups
 }
 
 func fight(systems Systems) int {
 
-	// 1- Target selection
-	targetGroups := getAttackGroups(systems)
-	InfectionAttackChoosal := make(map[int]int)
-	ImmuneAtackChoosal := make(map[int]int)
+	var winner string
+	var winnerUnits int
+	var ended bool = false
 
-	InfectionAttackChoosen := make(map[int]int)
-	ImmuneAtackChoosen := make(map[int]int)
+	for ended != true {
 
-	var attackChoosal *map[int]int
-	var attackChoosen *map[int]int
-	var initiativeGroups InitiativeGroups
+		// 1- Target selection
+		targetGroups := getAttackGroups(systems)
+		InfectionAttackChoosal := make(map[int]int)
+		ImmuneAtackChoosal := make(map[int]int)
 
-	for attackerID, attacker := range targetGroups {
-		var systemToAttack string
-		fmt.Println("attacker.SystemType: ", attacker.SystemType)
-		if attacker.SystemType == "Immune" {
-			systemToAttack = "Infection"
-			attackChoosal = &InfectionAttackChoosal
-			attackChoosen = &ImmuneAtackChoosen
-		} else {
-			systemToAttack = "Immune"
-			attackChoosal = &ImmuneAtackChoosal
-			attackChoosen = &InfectionAttackChoosen
-		}
-		attakerGroup := systems[attacker.SystemType][attacker.GroupID]
-		var maxDamage int = 0
-		var maxEffectivePower int = 0
-		var maxInitiative int = 0
-		var idToAttack int = -1
-		for targetID, target := range systems[systemToAttack] {
-			if _, ok := (*attackChoosen)[targetID]; !ok {
-				fmt.Println("CHOOSE ? ", target)
-				damage := attakerGroup.calculateDamageover(target)
-				fmt.Println("Damage: ", damage)
-				if damage > maxDamage {
-					fmt.Println("CHOOED BY DAMAGE")
-					maxDamage = damage
-					maxEffectivePower = target.EffectivePower
-					maxInitiative = target.Initiative
-					idToAttack = targetID
-				} else {
-					if damage == maxDamage {
-						if target.EffectivePower > maxEffectivePower {
-							fmt.Println("EffectivePower")
-							maxDamage = damage
-							maxEffectivePower = target.EffectivePower
-							maxInitiative = target.Initiative
-							idToAttack = targetID
-						} else {
-							if target.EffectivePower == maxEffectivePower {
-								if target.Initiative > maxInitiative {
+		InfectionAttackChoosen := make(map[int]int)
+		ImmuneAtackChoosen := make(map[int]int)
 
-									fmt.Println("CHOOED BY Initiative")
-									maxDamage = damage
-									maxEffectivePower = target.EffectivePower
-									maxInitiative = target.Initiative
-									idToAttack = targetID
+		var attackChoosal *map[int]int
+		var attackChoosen *map[int]int
+		var initiativeGroups InitiativeGroups
+
+		for attackerID, attacker := range targetGroups {
+			var systemToAttack string
+			if attacker.SystemType == "Immune" {
+				systemToAttack = "Infection"
+				attackChoosal = &InfectionAttackChoosal
+				attackChoosen = &ImmuneAtackChoosen
+			} else {
+				systemToAttack = "Immune"
+				attackChoosal = &ImmuneAtackChoosal
+				attackChoosen = &InfectionAttackChoosen
+			}
+			attakerGroup := systems[attacker.SystemType][attacker.GroupID]
+			var maxDamage int = 0
+			var maxEffectivePower int = 0
+			var maxInitiative int = 0
+			var idToAttack int = -1
+			for targetID, target := range systems[systemToAttack] {
+				if _, ok := (*attackChoosen)[targetID]; !ok && target.Units > 0 {
+					damage := attakerGroup.calculateDamageover(target)
+					if damage > maxDamage {
+						maxDamage = damage
+						maxEffectivePower = target.EffectivePower
+						maxInitiative = target.Initiative
+						idToAttack = targetID
+					} else {
+						if damage == maxDamage && damage != 0 {
+							if target.EffectivePower > maxEffectivePower {
+								maxDamage = damage
+								maxEffectivePower = target.EffectivePower
+								maxInitiative = target.Initiative
+								idToAttack = targetID
+							} else {
+								if target.EffectivePower == maxEffectivePower {
+									if target.Initiative > maxInitiative {
+										maxDamage = damage
+										maxEffectivePower = target.EffectivePower
+										maxInitiative = target.Initiative
+										idToAttack = targetID
+									}
 								}
 							}
 						}
 					}
 				}
 			}
+			if idToAttack > -1 {
+				(*attackChoosal)[attackerID] = idToAttack
+				(*attackChoosen)[idToAttack] = attackerID
+				initiativeGroups = append(initiativeGroups, InitiativeGroup{SystemType: attacker.SystemType, GroupID: attacker.GroupID, Initiative: attacker.Initiative, OriginalID: attackerID})
+			}
 		}
-		if idToAttack > -1 {
-			(*attackChoosal)[attackerID] = idToAttack
-			(*attackChoosen)[idToAttack] = attackerID
-			fmt.Println()
-			fmt.Println(attackChoosal)
-			fmt.Println(attackChoosen)
-			fmt.Println()
-			fmt.Println("attacker")
-			fmt.Println(systems[attacker.SystemType][attacker.GroupID])
-			fmt.Println("choses")
-			fmt.Println(systems[systemToAttack][idToAttack])
-			fmt.Println()
-			initiativeGroups = append(initiativeGroups, InitiativeGroup{SystemType: attacker.SystemType, GroupID: attacker.GroupID, Initiative: attacker.Initiative, OriginalID: attackerID})
+
+		sort.Sort(sort.Reverse(initiativeGroups))
+
+		//2 - Attack
+
+		for _, initiativeGroup := range initiativeGroups {
+			var attackerPtr, targetPtr *Group
+			var attackerOrdered TargetGroup = targetGroups[initiativeGroup.OriginalID]
+			var systemToAttack string
+
+			if attackerOrdered.SystemType == "Immune" {
+				systemToAttack = "Infection"
+				attackChoosal = &InfectionAttackChoosal
+			} else {
+				systemToAttack = "Immune"
+				attackChoosal = &ImmuneAtackChoosal
+			}
+
+			attackerPtr = &systems[initiativeGroup.SystemType][initiativeGroup.GroupID]
+			targetPtr = &systems[systemToAttack][(*attackChoosal)[initiativeGroup.OriginalID]]
+
+			if (*attackerPtr).Units > 0 {
+
+				damage := (*attackerPtr).calculateDamageover(*targetPtr)
+				killedUnits := damage / (*targetPtr).HitPoints
+				(*targetPtr).Units -= killedUnits
+				(*targetPtr).EffectivePower = (*targetPtr).Units * (*targetPtr).Damage
+			}
 		}
-	}
-
-	sort.Sort(sort.Reverse(initiativeGroups))
-	fmt.Println("Attack")
-	fmt.Println(initiativeGroups)
-	fmt.Println()
-	fmt.Println()
-
-	//2 - Attack
-
-	for _, initiativeGroup := range initiativeGroups {
-		var attackerPtr, targetPtr *Group
-		var attackerOrdered TargetGroup = targetGroups[initiativeGroup.OriginalID]
-		var systemToAttack string
-
-		if attackerOrdered.SystemType == "Immune" {
-			systemToAttack = "Infection"
-			attackChoosal = &InfectionAttackChoosal
+		var immuneAlive, infectionAlive int = 0, 0
+		for _, group := range systems["Immune"] {
+			if group.Units > 0 {
+				immuneAlive++
+			}
+		}
+		if immuneAlive == 0 {
+			winner = "Infection"
+			ended = true
 		} else {
-			systemToAttack = "Immune"
-			attackChoosal = &ImmuneAtackChoosal
+			for _, group := range systems["Infection"] {
+				if group.Units > 0 {
+					infectionAlive++
+				}
+			}
+			if infectionAlive == 0 {
+				ended = true
+				winner = "Immune"
+			}
 		}
-
-		attackerPtr = &systems[initiativeGroup.SystemType][initiativeGroup.GroupID]
-		targetPtr = &systems[systemToAttack][(*attackChoosal)[initiativeGroup.OriginalID]]
-
-		fmt.Println("Attacker")
-		fmt.Println(attackerPtr)
-		fmt.Println("EffectivePower:", (*attackerPtr).EffectivePower)
-		fmt.Println("Attacks")
-		fmt.Println(targetPtr)
-		damage := (*attackerPtr).calculateDamageover(*targetPtr)
-		fmt.Printf("Damage will be %d\n", damage)
-		fmt.Printf("HitPoints %d\n", (*targetPtr).HitPoints)
-		killedUnits := damage / (*targetPtr).HitPoints
-		fmt.Printf("Killed units %d\n", killedUnits)
-		(*targetPtr).Units -= killedUnits
-		(*targetPtr).EffectivePower = (*targetPtr).Units * (*targetPtr).Damage
 	}
 
-	return 0
+	for _, group := range systems[winner] {
+		if group.Units > 0 {
+			winnerUnits += group.Units
+		}
+	}
+
+	return winnerUnits
 }
 
 func main() {
